@@ -29,7 +29,7 @@ namespace WPF_ZooManager
         {
             InitializeComponent();
             string connectionString = ConfigurationManager.ConnectionStrings["WPF_ZooManager.Properties.Settings.PanjutorialsDBConnectionString"].ConnectionString;
-            sqlConnection = new SqlConnection(connectionString);
+            sqlConnection = new SqlConnection(connectionString);        
             ShowZoos();
             ShowAnimals();
         }
@@ -37,11 +37,47 @@ namespace WPF_ZooManager
         {
             ShowAssociatedAnimals();
             ShowSelectedZooInTextBox();
+            ZooEnabled(true);
+            AnimalEnabled(false);
+            AssociatedAnimalsEnabled(false);
+            myTextBox.IsEnabled = true;
         }
 
         private void listAnimals_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             ShowSelectedAnimalInTextBox();
+            AnimalEnabled(true);
+            ZooEnabled(false);
+            AssociatedAnimalsEnabled(false);
+            myTextBox.IsEnabled = true;
+        }
+
+        private void listAssociatedAnimals_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            AnimalEnabled(false);
+            ZooEnabled(false);
+            AssociatedAnimalsEnabled(true);
+            myTextBox.IsEnabled = false;
+        }
+
+        public void ZooEnabled(bool isZooEnabled)
+        {
+            AddZooButton.IsEnabled = isZooEnabled;
+            UpdateZooButton.IsEnabled = isZooEnabled;
+            DeleteZooButton.IsEnabled = isZooEnabled;            
+        }
+
+        private void AnimalEnabled(bool isAnimalEnabled)
+        {
+            AddAnimalButton.IsEnabled = isAnimalEnabled;
+            AddAnimalToZooButton.IsEnabled = isAnimalEnabled;
+            UpdateAnimalButton.IsEnabled = isAnimalEnabled;
+            DeleteAnimalButton.IsEnabled = isAnimalEnabled;                        
+        }
+
+        private void AssociatedAnimalsEnabled(bool isAssociatedAnimalsEnabled)
+        {
+            RemoveAnimalFromZooButton.IsEnabled = isAssociatedAnimalsEnabled;            
         }
 
         private void ShowSelectedZooInTextBox()
@@ -49,26 +85,18 @@ namespace WPF_ZooManager
             try
             {
                 string query = "select Location from Zoo where Id = @ZooId";
-
                 SqlCommand sqlCommand = new SqlCommand(query, sqlConnection);
-
                 SqlDataAdapter sqlDataAdapter = new SqlDataAdapter(sqlCommand);
 
                 using (sqlDataAdapter)
                 {
                     sqlCommand.Parameters.AddWithValue("@ZooId", listZoos.SelectedValue);
-
                     DataTable zooDataTable = new DataTable();
-
                     sqlDataAdapter.Fill(zooDataTable);
-
                     myTextBox.Text = zooDataTable.Rows[0]["Location"].ToString();
                 }
             }
-            catch (Exception e)
-            {
-                // MessageBox.Show(e.ToString());
-            }
+            catch { };
         }
 
         private void ShowSelectedAnimalInTextBox()
@@ -92,10 +120,7 @@ namespace WPF_ZooManager
                     myTextBox.Text = animalDataTable.Rows[0]["Name"].ToString();
                 }
             }
-            catch (Exception e)
-            {
-                // MessageBox.Show(e.ToString());
-            }
+            catch { };
         }
 
         private void ShowZoos()
@@ -153,10 +178,7 @@ namespace WPF_ZooManager
                     listAssociatedAnimals.ItemsSource = animalTable.DefaultView;
                 }
             }
-            catch (Exception e)
-            {
-                // MessageBox.Show(e.ToString());
-            }
+            catch { };
         }
 
         private void ShowAnimals()
@@ -185,23 +207,33 @@ namespace WPF_ZooManager
 
         private void DeleteZoo_Click(object sender, RoutedEventArgs e)
         {
-            try
+            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show("Do you want to delete zoo: " + myTextBox.Text + "?", "Delete Confirmation", System.Windows.MessageBoxButton.YesNo);
+            if (messageBoxResult == MessageBoxResult.Yes)
             {
-                string query = "delete from Zoo where id = @ZooId";
-                SqlCommand sqlCommand = new SqlCommand(query, sqlConnection);
-                sqlConnection.Open();
-                sqlCommand.Parameters.AddWithValue("@ZooId", listZoos.SelectedValue);
-                sqlCommand.ExecuteScalar();
+                try
+                {
+                    string query = "delete from Zoo where id = @ZooId";
+                    SqlCommand sqlCommand = new SqlCommand(query, sqlConnection);
+                    sqlConnection.Open();
+                    sqlCommand.Parameters.AddWithValue("@ZooId", listZoos.SelectedValue);
+                    sqlCommand.ExecuteScalar();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString());
+                }
+                finally
+                {
+                    sqlConnection.Close();
+                    ShowAssociatedAnimals();
+                    ShowZoos();
+                    ZooEnabled(false);
+                    myTextBox.Text = "";
+                }
             }
-            catch (Exception ex)
+            else
             {
-                MessageBox.Show(ex.ToString());
-            }
-            finally
-            {
-                sqlConnection.Close();
-                ShowAssociatedAnimals();
-                ShowZoos();
+                return;
             }
         }
 
@@ -273,45 +305,63 @@ namespace WPF_ZooManager
 
         private void DeleteAnimal_Click(object sender, RoutedEventArgs e)
         {
-            try
+            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show("Do you want to delete animal: " + myTextBox.Text + "?", "Delete Confirmation", System.Windows.MessageBoxButton.YesNo);
+            if (messageBoxResult == MessageBoxResult.Yes)
             {
-                string query = "delete from Animal where id = @AnimalId";
-                SqlCommand sqlCommand = new SqlCommand(query, sqlConnection);
-                sqlConnection.Open();
-                sqlCommand.Parameters.AddWithValue("@AnimalId", listAnimals.SelectedValue);
-                sqlCommand.ExecuteScalar();
+                try
+                {
+                    string query = "delete from Animal where id = @AnimalId";
+                    SqlCommand sqlCommand = new SqlCommand(query, sqlConnection);
+                    sqlConnection.Open();
+                    sqlCommand.Parameters.AddWithValue("@AnimalId", listAnimals.SelectedValue);
+                    sqlCommand.ExecuteScalar();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString());
+                }
+                finally
+                {
+                    sqlConnection.Close();
+                    ShowAnimals();
+                    ShowAssociatedAnimals();
+                    AnimalEnabled(false);
+                    myTextBox.Text = "";
+                }
             }
-            catch (Exception ex)
+            else
             {
-                MessageBox.Show(ex.ToString());
-            }
-            finally
-            {
-                sqlConnection.Close();
-                ShowAnimals();
-                ShowAssociatedAnimals();
+                return;
             }
         }
 
         private void RemoveAnimalFromZoo_Click(object sender, RoutedEventArgs e)
         {
-            try
+            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show("Do you want to this animal from " + myTextBox.Text + " zoo?", "Delete Confirmation", System.Windows.MessageBoxButton.YesNo);
+            if (messageBoxResult == MessageBoxResult.Yes)
             {
-                string query = "delete from ZooAnimal where ZooId = @ZooId and AnimalId = @AnimalId";
-                SqlCommand sqlCommand = new SqlCommand(query, sqlConnection);
-                sqlConnection.Open();
-                sqlCommand.Parameters.AddWithValue("@ZooId", listZoos.SelectedValue);
-                sqlCommand.Parameters.AddWithValue("@AnimalId", listAssociatedAnimals.SelectedValue);
-                sqlCommand.ExecuteScalar();
+                try
+                {
+                    string query = "delete from ZooAnimal where ZooId = @ZooId and AnimalId = @AnimalId";
+                    SqlCommand sqlCommand = new SqlCommand(query, sqlConnection);
+                    sqlConnection.Open();
+                    sqlCommand.Parameters.AddWithValue("@ZooId", listZoos.SelectedValue);
+                    sqlCommand.Parameters.AddWithValue("@AnimalId", listAssociatedAnimals.SelectedValue);
+                    sqlCommand.ExecuteScalar();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString());
+                }
+                finally
+                {
+                    sqlConnection.Close();
+                    ShowAssociatedAnimals();
+                }
             }
-            catch (Exception ex)
+            else
             {
-                MessageBox.Show(ex.ToString());
-            }
-            finally
-            {
-                sqlConnection.Close();
-                ShowAssociatedAnimals();
+                return;
             }
         }
 
